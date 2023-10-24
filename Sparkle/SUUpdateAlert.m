@@ -52,12 +52,9 @@ static NSString *const SUUpdateAlertTouchBarIdentifier = @"" SPARKLE_BUNDLE_IDEN
     IBOutlet NSBox *_releaseNotesBoxView;
     IBOutlet NSTextField *_descriptionField;
     IBOutlet NSView *_releaseNotesContainerView;
-    IBOutlet NSButton *_automaticallyInstallUpdatesButton;
-    
+
     void (^_didBecomeKeyBlock)(void);
     void(^_completionBlock)(SPUUserUpdateChoice, NSRect, BOOL);
-    
-    BOOL _allowsAutomaticUpdates;
 }
 
 - (instancetype)initWithAppcastItem:(SUAppcastItem *)item state:(SPUUserUpdateState *)state host:(SUHost *)aHost versionDisplayer:(id<SUVersionDisplay>)versionDisplayer completionBlock:(void (^)(SPUUserUpdateChoice, NSRect, BOOL))completionBlock didBecomeKeyBlock:(void (^)(void))didBecomeKeyBlock
@@ -71,20 +68,7 @@ static NSString *const SUUpdateAlertTouchBarIdentifier = @"" SPARKLE_BUNDLE_IDEN
         _state = state;
         _completionBlock = [completionBlock copy];
         _didBecomeKeyBlock = [didBecomeKeyBlock copy];
-        
-        SPUUpdaterSettings *updaterSettings = [[SPUUpdaterSettings alloc] initWithHostBundle:aHost.bundle];
-        
-        BOOL allowsAutomaticUpdates;
-        NSNumber *allowsAutomaticUpdatesOption = updaterSettings.allowsAutomaticUpdatesOption;
-        if (item.informationOnlyUpdate) {
-            allowsAutomaticUpdates = NO;
-        } else if (allowsAutomaticUpdatesOption == nil) {
-            allowsAutomaticUpdates = updaterSettings.automaticallyChecksForUpdates;
-        } else {
-            allowsAutomaticUpdates = allowsAutomaticUpdatesOption.boolValue;
-        }
-        _allowsAutomaticUpdates = allowsAutomaticUpdates;
-        
+
         [self setShouldCascadeWindows:NO];
     } else {
         assert(false);
@@ -350,39 +334,13 @@ static NSString *const SUUpdateAlertTouchBarIdentifier = @"" SPARKLE_BUNDLE_IDEN
         [_installButton setAction:@selector(openInfoURL:)];
     }
 
-    BOOL allowsAutomaticUpdates = _allowsAutomaticUpdates;
-    
     if (showReleaseNotes) {
         [self displayReleaseNotesSpinner];
     } else {
-        // When automatic updates aren't allowed we won't show the automatic install updates button
-        // This button is removed later below
-        if (allowsAutomaticUpdates) {
-            NSLayoutConstraint *automaticallyInstallUpdatesButtonToDescriptionFieldConstraint = [NSLayoutConstraint constraintWithItem:_automaticallyInstallUpdatesButton attribute:NSLayoutAttributeTop relatedBy:NSLayoutRelationEqual toItem:_descriptionField attribute:NSLayoutAttributeBottom multiplier:1.0 constant:8.0];
-            
-            [window.contentView addConstraint:automaticallyInstallUpdatesButtonToDescriptionFieldConstraint];
-        }
-        
         [_releaseNotesContainerView removeFromSuperview];
     }
     
     // NOTE: The code below for deciding what buttons to hide is complex! Due to array of feature configurations :)
-    
-    // When we show release notes, it looks ugly if the install buttons are not closer to the release notes view
-    // However when we don't show release notes, it looks ugly if the install buttons are too close to the description field. Shrugs.
-    if (!allowsAutomaticUpdates) {
-        if (showReleaseNotes) {
-            // Fix constraints so that buttons aren't far away from web view when we hide the automatic updates check box
-            NSLayoutConstraint *skipButtonToReleaseNotesContainerConstraint = [NSLayoutConstraint constraintWithItem:_skipButton attribute:NSLayoutAttributeTop relatedBy:NSLayoutRelationEqual toItem:_releaseNotesContainerView attribute:NSLayoutAttributeBottom multiplier:1.0 constant:12.0];
-            
-            [window.contentView addConstraint:skipButtonToReleaseNotesContainerConstraint];
-        } else {
-            NSLayoutConstraint *skipButtonToDescriptionConstraint = [NSLayoutConstraint constraintWithItem:_skipButton attribute:NSLayoutAttributeTop relatedBy:NSLayoutRelationEqual toItem:_descriptionField attribute:NSLayoutAttributeBottom multiplier:1.0 constant:20.0];
-
-            [window.contentView addConstraint:skipButtonToDescriptionConstraint];
-        }
-        [_automaticallyInstallUpdatesButton removeFromSuperview];
-    }
     
     if (_state.stage == SPUUserUpdateStageInstalling) {
 #if SPARKLE_COPY_LOCALIZATIONS
